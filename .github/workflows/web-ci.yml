@@ -37,12 +37,17 @@ on:
         required: false
         type: number
         default: 20
+      job-key:
+        description: Stable caller-specific key used to cancel only stale copies of this job.
+        required: false
+        type: string
+        default: validate
 
 permissions:
   contents: read
 
 concurrency:
-  group: web-ci-${{ github.repository }}-${{ github.workflow }}-${{ github.ref }}
+  group: web-ci-${{ github.repository }}-${{ github.ref }}-${{ inputs.job-key }}
   cancel-in-progress: true
 
 jobs:
@@ -80,4 +85,3 @@ jobs:
       - name: Audit production dependencies
         if: inputs.audit-production
         run: npm audit --omit=dev --audit-level=high
-

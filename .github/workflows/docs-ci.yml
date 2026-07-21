@@ -26,12 +26,17 @@ on:
         required: false
         type: number
         default: 10
+      job-key:
+        description: Stable caller-specific key used to cancel only stale copies of this job.
+        required: false
+        type: string
+        default: validate
 
 permissions:
   contents: read
 
 concurrency:
-  group: docs-ci-${{ github.repository }}-${{ github.workflow }}-${{ github.ref }}
+  group: docs-ci-${{ github.repository }}-${{ github.ref }}-${{ inputs.job-key }}
   cancel-in-progress: true
 
 jobs:
@@ -79,4 +84,3 @@ jobs:
           while IFS= read -r -d '' script; do
             bash -n "$script"
           done < <(git ls-files -z '*.sh')
-
