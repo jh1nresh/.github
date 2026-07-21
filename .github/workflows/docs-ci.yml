@@ -1,0 +1,82 @@
+name: Reusable Docs CI
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version for Python validators.
+        required: false
+        type: string
+        default: "3.13"
+      validator-kind:
+        description: Supported values are python and shell.
+        required: true
+        type: string
+      validator-path:
+        description: Repository-relative executable validator path.
+        required: true
+        type: string
+      check-shell-syntax:
+        description: Run bash syntax checks for every tracked shell script.
+        required: false
+        type: boolean
+        default: false
+      timeout-minutes:
+        description: Maximum runtime for the validation job.
+        required: false
+        type: number
+        default: 10
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-ci-${{ github.repository }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        if: inputs.validator-kind == 'python'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Reject unsupported validator kind
+        if: inputs.validator-kind != 'python' && inputs.validator-kind != 'shell'
+        env:
+          VALIDATOR_KIND: ${{ inputs.validator-kind }}
+        run: |
+          echo "Unsupported validator kind: $VALIDATOR_KIND" >&2
+          exit 2
+
+      - name: Run Python validator
+        if: inputs.validator-kind == 'python'
+        env:
+          VALIDATOR_PATH: ${{ inputs.validator-path }}
+        run: |
+          python3 -m py_compile "$VALIDATOR_PATH"
+          python3 "$VALIDATOR_PATH"
+
+      - name: Run shell validator
+        if: inputs.validator-kind == 'shell'
+        env:
+          VALIDATOR_PATH: ${{ inputs.validator-path }}
+        run: |
+          bash -n "$VALIDATOR_PATH"
+          "$VALIDATOR_PATH"
+
+      - name: Validate tracked shell syntax
+        if: inputs.check-shell-syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' script; do
+            bash -n "$script"
+          done < <(git ls-files -z '*.sh')
+
