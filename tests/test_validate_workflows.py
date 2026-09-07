@@ -88,11 +88,20 @@ class ValidateWorkflowsTests(unittest.TestCase):
         )
 
     def test_non_sha_action_reference(self) -> None:
-        self._replace(
-            "self-test.yml",
-            "uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
-            "uses: actions/checkout@v7.0.1",
-        )
+        path = self.fixture_dir / "self-test.yml"
+        text = path.read_text(encoding="utf-8")
+        pinned_line = None
+        sha = None
+        for line in text.splitlines():
+            match = self.validator.PINNED_USE.match(line)
+            if match:
+                pinned_line = line
+                sha = match.group(1)
+                break
+        if pinned_line is None or sha is None:
+            self.fail("self-test.yml fixture has no SHA-pinned uses: line")
+        mutated_line = pinned_line.replace(f"@{sha}", "@v1", 1)
+        path.write_text(text.replace(pinned_line, mutated_line, 1), encoding="utf-8")
         self._assert_fails("action is not pinned to a full commit SHA")
 
     def test_forbidden_pull_request_target(self) -> None:
