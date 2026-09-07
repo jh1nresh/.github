@@ -15,3 +15,24 @@ bounded timeouts. Product-specific tests remain in each caller repository.
 Callers should pin this repository to a full commit SHA. Do not pass secrets,
 deployment credentials, or arbitrary production commands into these workflows.
 
+## Local validation
+
+From the repository root, run the shared-workflow policy validator:
+
+```bash
+python3 scripts/validate_workflows.py
+```
+
+Expected success output:
+
+```text
+validated 4 workflow files; immutable pins and safety policy passed
+```
+
+Run the offline validator regression suite (stdlib `unittest` only; mutations
+stay inside a temporary fixture copy of `.github/workflows/`):
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py' -v
+```
+
